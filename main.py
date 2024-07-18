@@ -4,6 +4,8 @@ import os
 import inflect
 from datetime import datetime
 from docx2pdf import convert
+import smtplib
+from email.message import EmailMessage
 
 # Create an inflect engine
 p = inflect.engine()
@@ -37,7 +39,30 @@ def replace_text_in_doc(input_file_path, output_file_path, replacements):
     doc.save(output_file_path)
     convert(output_file_path)
     os.remove(output_file_path)
-    print(os.path.splitext(output_file)[0] + '.pdf')
+    print("Saved to "+os.path.splitext(output_file_path)[0] + '.pdf')
+
+def mail_slip(subject, body, to_email, from_email, password, attachment_path):
+    # Create the email message
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg.set_content(body)
+
+    # Add the attachment
+    with open(attachment_path, 'rb') as file:
+        file_name = os.path.basename(attachment_path)
+        msg.add_attachment(file.read(), maintype='application', subtype='octet-stream', filename=file_name)
+
+    try:
+        # Use SMTP_SSL for secure connection
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(from_email, password)
+            server.send_message(msg)
+            print("Email sent successfully to "+ to_email)
+    except smtplib.SMTPException as e:
+        print(f"Failed to send email: {e}")
+        
 
 # Example usage:
 input_file = 'Payslip.docx'
@@ -95,3 +120,11 @@ for index, row in df.iterrows():
         'XdesX': Designation,
     }
     replace_text_in_doc(input_file, output_file, replacements)
+
+    if(row['Mail'] == "Yes"):
+        subject = " Your Pay Slip || Emulus"
+        body = "This is your monthly Pay Slip from Emulus."
+        from_email = "mayank.emulus@gmail.com"
+        password = "jdau qykc lzwb gpoa"
+        attachment_path = os.path.splitext(output_file)[0] + '.pdf'
+        mail_slip(subject, body, Email, from_email, password, attachment_path)
